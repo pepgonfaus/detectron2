@@ -119,7 +119,7 @@ class TrainerBase:
             start_iter, max_iter (int): See docs above
         """
         logger = logging.getLogger(__name__)
-        logger.info("Starting training from iteration {}".format(start_iter))
+        logger.info("Starting training from iteration {} [max iter: {}]".format(start_iter, max_iter))
 
         self.iter = self.start_iter = start_iter
         self.max_iter = max_iter

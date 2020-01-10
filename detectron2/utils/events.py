@@ -178,7 +178,7 @@ eta: {eta}  iter: {iter}  {losses}  \
 lr: {lr}  {memory}\
 """.format(
                 eta=eta_string,
-                iter=iteration,
+                iter=iteration+1,
                 losses="  ".join(
                     [
                         "{}: {:.3f}".format(k, v.median(20))

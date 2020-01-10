@@ -24,6 +24,7 @@ from .register_coco import register_coco_instances, register_coco_panoptic_separ
 from .lvis import register_lvis_instances, get_lvis_instances_meta
 from .cityscapes import load_cityscapes_instances, load_cityscapes_semantic
 from .pascal_voc import register_pascal_voc
+from .openlogo import register_openlogo
 from .builtin_meta import _get_builtin_metadata
 
 
@@ -206,8 +207,23 @@ def register_all_pascal_voc(root="datasets"):
         MetadataCatalog.get(name).evaluator_type = "pascal_voc"
 
 
+# ==== Predefined splits for PASCAL VOC ===========
+def register_all_openlogo(root="datasets"):
+    SPLITS = [
+        ("openlogo_supervised_train", "supervised_imageset", "train"),
+        ("openlogo_supervised_trainval", "supervised_imageset", "trainval"),
+        ("openlogo_supervised_val", "supervised_imageset", "val"),
+        ("openlogo_supervised_test", "supervised_imageset", "test"),
+    ]
+    for name, supervision, split in SPLITS:
+        register_openlogo(name, os.path.join(root, "openlogo"), split, supervision)
+        MetadataCatalog.get(name).evaluator_type = "openlogo"
+
+
 # Register them all under "./datasets"
 register_all_coco()
 register_all_lvis()
 register_all_cityscapes()
 register_all_pascal_voc()
+
+register_all_openlogo()
