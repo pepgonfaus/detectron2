@@ -1,0 +1,48 @@
+_BASE_: "../Base-RetinaNet.yaml"
+MODEL:
+  WEIGHTS: "detectron2://COCO-Detection/retinanet_R_50_FPN_1x/137593951/model_final_b796dc.pkl"
+  RESNETS:
+    DEPTH: 50
+  RETINANET:
+    NUM_CLASSES: 352
+DATASETS:
+  TRAIN: ('openlogo_supervised_trainval',)
+  TEST: ('openlogo_supervised_test',)
+INPUT:
+  MIN_SIZE_TRAIN: (800, 850, 900, 950, 1000, 1050, 1100)
+  MIN_SIZE_TEST: 800
+SOLVER:
+#  MAX_ITER: 112000       # images: 18752 -> 1 GPU: 12 epochs --> 225.024 iters
+#  STEPS: (75000, 95000)  # 8epochs - 10epochs
+#  IMS_PER_BATCH: 2
+#  BASE_LR: 0.0025
+
+#  MAX_ITER: 55000       # images: 18752 -> 1 GPU: 12 epochs --> 225.024 iters
+#  STEPS: (35000, 45000)  # 8epochs - 10epochs
+#  IMS_PER_BATCH: 4
+#  BASE_LR: 0.005
+
+#  MAX_ITER: 15000       # images: 18752 -> 1 GPU: 12 epochs --> 225.024 iters
+#  STEPS: (9000, 12000)  # 8epochs - 10epochs
+#  IMS_PER_BATCH: 16
+#  BASE_LR: 0.02
+
+  MAX_ITER: 30000       # images: 18752 -> 1 GPU: 12 epochs --> 225.024 iters
+  STEPS: (18000, 24000)  # 8epochs - 10epochs
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.005
+
+#  MAX_ITER: 45000       # images: 18752 -> 1 GPU: 12 epochs --> 225.024 iters
+#  STEPS: (27000, 36000)  # 8epochs - 10epochs
+#  IMS_PER_BATCH: 16
+#  BASE_LR: 0.02
+#  MAX_ITER: 90000       # images: 18752 -> 1 GPU: 12 epochs --> 225.024 iters
+#  STEPS: (52000, 72000)  # 8epochs - 10epochs
+#  IMS_PER_BATCH: 8
+#  BASE_LR: 0.01
+
+#  STEPS: (12000, 16000)
+#  MAX_ITER: 18000  # 17.4 epochs
+  WARMUP_ITERS: 1500
+
+OUTPUT_DIR: "./output/openlogo/retina50-1x_coco"
