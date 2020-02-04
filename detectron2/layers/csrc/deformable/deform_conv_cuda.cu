@@ -8,7 +8,7 @@
 // https://github.com/chengdazhi/Deformable-Convolution-V2-PyTorch/blob/mmdetection/mmdet/ops/dcn/src/deform_conv_cuda.c
 // Original license: Apache 2.0
 
-#include <torch/extension.h>
+#include <torch/types.h>
 
 #include "deform_conv.h"
 
@@ -713,10 +713,11 @@ int deform_conv_backward_parameters_cuda(
                                             outputHeight,
                                             outputWidth});
   gradOutputBuffer.copy_(gradOutput);
-  gradOutputBuffer = gradOutputBuffer.view({batchSize / im2col_step,
-                                            nOutputPlane,
-                                            im2col_step * outputHeight,
-                                            outputWidth});
+  // gradOutput is not contiguous, so we do reshape (instead of view) next
+  gradOutputBuffer = gradOutputBuffer.reshape({batchSize / im2col_step,
+                                               nOutputPlane,
+                                               im2col_step * outputHeight,
+                                               outputWidth});
 
   gradOutput.transpose_(1, 2);
   gradOutput =

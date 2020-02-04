@@ -56,7 +56,7 @@ def select_foreground_proposals(proposals, bg_label):
     Returns:
         list[Instances]: N Instances, each contains only the selected foreground instances.
         list[Tensor]: N boolean vector, correspond to the selection mask of
-            each instance. True for selected instances.
+            each Instances object. True for selected instances.
     """
     assert isinstance(proposals, (list, tuple))
     assert isinstance(proposals[0], Instances)
@@ -92,6 +92,10 @@ def select_proposals_with_visible_keypoints(proposals):
     ret = []
     all_num_fg = []
     for proposals_per_image in proposals:
+        # If empty/unannotated image (hard negatives), skip filtering for train
+        if len(proposals_per_image) == 0:
+            ret.append(proposals_per_image)
+            continue
         gt_keypoints = proposals_per_image.gt_keypoints.tensor
         # #fg x K x 3
         vis_mask = gt_keypoints[:, :, 2] >= 1
@@ -193,8 +197,9 @@ class ROIHeads(torch.nn.Module):
         Prepare some proposals to be used to train the ROI heads.
         It performs box matching between `proposals` and `targets`, and assigns
         training labels to the proposals.
-        It returns `self.batch_size_per_image` random samples from proposals and groundtruth boxes,
-        with a fraction of positives that is no larger than `self.positive_sample_fraction.
+        It returns ``self.batch_size_per_image`` random samples from proposals and groundtruth
+        boxes, with a fraction of positives that is no larger than
+        ``self.positive_sample_fraction``.
 
         Args:
             See :meth:`ROIHeads.forward`
@@ -203,10 +208,12 @@ class ROIHeads(torch.nn.Module):
             list[Instances]:
                 length `N` list of `Instances`s containing the proposals
                 sampled for training. Each `Instances` has the following fields:
+
                 - proposal_boxes: the proposal boxes
                 - gt_boxes: the ground-truth box that the proposal is assigned to
                   (this is only meaningful if the proposal has a label > 0; if label = 0
-                   then the ground-truth box is random)
+                  then the ground-truth box is random)
+
                 Other fields such as "gt_classes", "gt_masks", that's included in `targets`.
         """
         gt_boxes = [x.gt_boxes for x in targets]
@@ -278,24 +285,25 @@ class ROIHeads(torch.nn.Module):
                 map name to tensor. Axis 0 represents the number of images `N` in
                 the input data; axes 1-3 are channels, height, and width, which may
                 vary between feature maps (e.g., if a feature pyramid is used).
-            proposals (list[Instances]): length `N` list of `Instances`s. The i-th
+            proposals (list[Instances]): length `N` list of `Instances`. The i-th
                 `Instances` contains object proposals for the i-th input image,
                 with fields "proposal_boxes" and "objectness_logits".
-            targets (list[Instances], optional): length `N` list of `Instances`s. The i-th
+            targets (list[Instances], optional): length `N` list of `Instances`. The i-th
                 `Instances` contains the ground-truth per-instance annotations
                 for the i-th input image.  Specify `targets` during training only.
                 It may have the following fields:
+
                 - gt_boxes: the bounding box of each instance.
                 - gt_classes: the label for each instance with a category ranging in [0, #class].
                 - gt_masks: PolygonMasks or BitMasks, the ground-truth masks of each instance.
                 - gt_keypoints: NxKx3, the groud-truth keypoints for each instance.
 
         Returns:
-            results (list[Instances]): length `N` list of `Instances`s containing the
-                detected instances. Returned during inference only; may be []
-                during training.
-            losses (dict[str: Tensor]): mapping from a named loss to a tensor
-                storing the loss. Used during training only.
+            results (list[Instances]): length `N` list of `Instances` containing the
+            detected instances. Returned during inference only; may be [] during training.
+
+            losses (dict[str->Tensor]):
+            mapping from a named loss to a tensor storing the loss. Used during training only.
         """
         raise NotImplementedError()
 
@@ -465,10 +473,11 @@ class StandardROIHeads(ROIHeads):
 
     def _init_box_head(self, cfg):
         # fmt: off
-        pooler_resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
-        pooler_scales     = tuple(1.0 / self.feature_strides[k] for k in self.in_features)
-        sampling_ratio    = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
-        pooler_type       = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
+        pooler_resolution        = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
+        pooler_scales            = tuple(1.0 / self.feature_strides[k] for k in self.in_features)
+        sampling_ratio           = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        pooler_type              = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
+        self.train_on_pred_boxes = cfg.MODEL.ROI_BOX_HEAD.TRAIN_ON_PRED_BOXES
         # fmt: on
 
         # If StandardROIHeads is applied on multiple feature maps (as in FPN),
@@ -555,8 +564,9 @@ class StandardROIHeads(ROIHeads):
 
         if self.training:
             losses = self._forward_box(features_list, proposals)
-            # During training the proposals used by the box head are
-            # used by the mask, keypoint (and densepose) heads.
+            # Usually the original proposals used by the box head are used by the mask, keypoint
+            # heads. But when `self.train_on_pred_boxes is True`, proposals will contain boxes
+            # predicted by the box head.
             losses.update(self._forward_mask(features_list, proposals))
             losses.update(self._forward_keypoint(features_list, proposals))
             return proposals, losses
@@ -595,7 +605,8 @@ class StandardROIHeads(ROIHeads):
 
     def _forward_box(self, features, proposals):
         """
-        Forward logic of the box prediction branch.
+        Forward logic of the box prediction branch. If `self.train_on_pred_boxes is True`,
+            the function puts predicted boxes in the `proposal_boxes` field of `proposals` argument.
 
         Args:
             features (list[Tensor]): #level input features for box prediction
@@ -621,6 +632,10 @@ class StandardROIHeads(ROIHeads):
             self.smooth_l1_beta,
         )
         if self.training:
+            if self.train_on_pred_boxes:
+                pred_boxes = outputs.predict_boxes_for_gt_classes()
+                for proposals_per_image, pred_boxes_per_image in zip(proposals, pred_boxes):
+                    proposals_per_image.proposal_boxes = Boxes(pred_boxes_per_image)
             return outputs.losses()
         else:
             pred_instances, _ = outputs.inference(

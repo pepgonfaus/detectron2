@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import copy
+import logging
 import numpy as np
 import torch
 from fvcore.common.file_io import PathManager
@@ -24,18 +25,20 @@ class DatasetMapper:
     You may need to follow it to implement your own one for customized logic.
 
     The callable currently does the following:
+
     1. Read the image from "file_name"
     2. Applies cropping/geometric transforms to the image and annotations
     3. Prepare data and annotations to Tensor and :class:`Instances`
     """
 
     def __init__(self, cfg, is_train=True):
-        self.tfm_gens = utils.build_transform_gen(cfg, is_train)
-
         if cfg.INPUT.CROP.ENABLED and is_train:
             self.crop_gen = T.RandomCrop(cfg.INPUT.CROP.TYPE, cfg.INPUT.CROP.SIZE)
+            logging.getLogger(__name__).info("CropGen used in training: " + str(self.crop_gen))
         else:
             self.crop_gen = None
+
+        self.tfm_gens = utils.build_transform_gen(cfg, is_train)
 
         # fmt: off
         self.img_format     = cfg.INPUT.FORMAT
@@ -95,8 +98,7 @@ class DatasetMapper:
         # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
         # Therefore it's important to use torch.Tensor.
-        dataset_dict["image"] = torch.as_tensor(image.transpose(2, 0, 1).astype("float32"))
-        # Can use uint8 if it turns out to be slow some day
+        dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
 
         # USER: Remove if you don't use pre-computed proposals.
         if self.load_proposals:

@@ -11,12 +11,22 @@ Please see [Apply Net](TOOL_APPLY_NET.md) for more details on the tool.
 
 ## Training
 
+First, prepare the [dataset](http://densepose.org/#dataset) into the following structure under the directory you'll run training scripts:
+<pre>
+datasets/coco/
+  annotations/
+    densepose_{train,minival,valminusminival}2014.json
+    <a href="https://dl.fbaipublicfiles.com/detectron2/densepose/densepose_minival2014_100.json">densepose_minival2014_100.json </a>  (optional, for testing only)
+  {train,val}2014/
+    # image files that are mentioned in the corresponding json
+</pre>
+
 To train a model one can use the [train_net.py](../train_net.py) script.
 This script was used to train all DensePose models in [Model Zoo](MODEL_ZOO.md).
 For example, to launch end-to-end DensePose-RCNN training with ResNet-50 FPN backbone
 on 8 GPUs following the s1x schedule, one can run
 ```bash
-python train_net.py --config-file configs/densepose_rcnn_R_50_FPN_s1x.yaml --num_gpus 8
+python train_net.py --config-file configs/densepose_rcnn_R_50_FPN_s1x.yaml --num-gpus 8
 ```
 The configs are made for 8-GPU training. To train on 1 GPU, one can apply the
 [linear learning rate scaling rule](https://arxiv.org/abs/1706.02677):
