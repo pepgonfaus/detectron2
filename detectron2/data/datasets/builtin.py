@@ -216,6 +216,17 @@ def register_all_openlogo(root="datasets"):
         ("openlogo_supervised_trainval", "supervised_imageset", "trainval"),
         ("openlogo_supervised_val", "supervised_imageset", "val"),
         ("openlogo_supervised_test", "supervised_imageset", "test"),
+
+        ("openlogo_setting1_supervised_train", "supplyment_imageset", "supervised_cls_train_1280"),
+        ("openlogo_setting1_supervised_val", "supplyment_imageset", "supervised_cls_val_1023"),
+        ("openlogo_setting1_supervised_test", "supplyment_imageset", "supervised_cls_test_9168"),
+        ("openlogo_setting1_unsupervised_test", "supplyment_imageset", "unsupervised_cls_test_15612"),
+
+        ("openlogo_setting2_supervised_train", "supplyment_imageset_setting2", "supervised_cls_train_10586"),
+        ("openlogo_setting2_supervised_val", "supplyment_imageset_setting2", "supervised_cls_val_1561"),
+        ("openlogo_setting2_supervised_test", "supplyment_imageset_setting2", "supervised_cls_test_3121"),
+        ("openlogo_setting2_unsupervised_test", "supplyment_imageset_setting2", "unsupervised_cls_test_3649"),
+
     ]
     for name, supervision, split in SPLITS:
         register_openlogo(name, os.path.join(root, "openlogo"), split, supervision)
